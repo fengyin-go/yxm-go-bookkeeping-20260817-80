@@ -42,3 +42,15 @@ func (s *MemoryStore) DeleteTransaction(id string) error {
 	delete(s.transactions, id)
 	return nil
 }
+
+// HasTransactionsByAccount 判断账户是否已被流水使用。
+func (s *MemoryStore) HasTransactionsByAccount(accountID string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, t := range s.transactions {
+		if t.AccountID == accountID {
+			return true
+		}
+	}
+	return false
+}

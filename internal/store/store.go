@@ -21,6 +21,7 @@ type Store interface {
 	ListAccounts() []*model.Account
 	UpdateAccount(a *model.Account) error
 	DeleteAccount(id string) error
+	HasTransactionsByAccount(accountID string) bool
 
 	// 分类
 	CreateCategory(c *model.Category) error

@@ -63,6 +63,9 @@ func (s *Service) UpdateAccount(id string, input model.Account) (*model.Account,
 
 // DeleteAccount 删除账户。
 func (s *Service) DeleteAccount(id string) error {
+	if s.store.HasTransactionsByAccount(id) {
+		return &model.AccountInUseError{AccountID: id}
+	}
 	if err := s.store.DeleteAccount(id); err != nil {
 		return err
 	}
