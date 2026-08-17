@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"strings"
 	"time"
 )
@@ -18,6 +19,24 @@ type Budget struct {
 	Amount     int64     `json:"amount"`      // 预算金额（分）
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+// BudgetDuplicateError 表示同一分类（或全局）已经存在预算。
+type BudgetDuplicateError struct {
+	CategoryID string
+}
+
+func (e *BudgetDuplicateError) Error() string {
+	if e.CategoryID != "" {
+		return "该分类已存在预算: " + e.CategoryID
+	}
+	return "已存在全局预算"
+}
+
+// IsBudgetDuplicate 判断错误是否为重复预算错误。
+func IsBudgetDuplicate(err error) bool {
+	var target *BudgetDuplicateError
+	return errors.As(err, &target)
 }
 
 // Validate 规范化并校验预算字段。
