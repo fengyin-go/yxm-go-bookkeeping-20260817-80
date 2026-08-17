@@ -52,6 +52,15 @@ func (s *Service) UpdateCategory(id string, input model.Category) (*model.Catego
 	if err != nil {
 		return nil, err
 	}
+	// 收支类型是分类的关键属性：分类一旦被流水引用，变更类型会令历史流水
+	// 与分类类型不一致，进而污染报表，因此被流水占用时禁止变更类型。
+	if input.Type != exist.Type {
+		for _, t := range s.store.ListTransactions() {
+			if t.CategoryID == id {
+				return nil, &model.CategoryInUseError{CategoryID: id}
+			}
+		}
+	}
 	exist.Name = input.Name
 	exist.Type = input.Type
 	if err := exist.Validate(); err != nil {
