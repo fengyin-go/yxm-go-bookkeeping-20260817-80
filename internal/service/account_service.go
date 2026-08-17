@@ -62,7 +62,17 @@ func (s *Service) UpdateAccount(id string, input model.Account) (*model.Account,
 }
 
 // DeleteAccount 删除账户。
+// 账户若已被流水引用则禁止删除，否则会留下指向已删除账户的悬空流水，
+// 且这些流水当初造成的余额变动无法对账。
 func (s *Service) DeleteAccount(id string) error {
+	if _, err := s.store.GetAccount(id); err != nil {
+		return err
+	}
+	for _, t := range s.store.ListTransactions() {
+		if t.AccountID == id {
+			return &model.AccountInUseError{AccountID: id}
+		}
+	}
 	if err := s.store.DeleteAccount(id); err != nil {
 		return err
 	}
