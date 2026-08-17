@@ -28,6 +28,7 @@ type Store interface {
 	ListCategories() []*model.Category
 	UpdateCategory(c *model.Category) error
 	DeleteCategory(id string) error
+	HasTransactionsByCategory(categoryID string) bool
 
 	// 流水
 	CreateTransaction(t *model.Transaction) error

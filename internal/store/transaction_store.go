@@ -42,3 +42,15 @@ func (s *MemoryStore) DeleteTransaction(id string) error {
 	delete(s.transactions, id)
 	return nil
 }
+
+// HasTransactionsByCategory 判断分类是否已被流水使用。
+func (s *MemoryStore) HasTransactionsByCategory(categoryID string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, t := range s.transactions {
+		if t.CategoryID == categoryID {
+			return true
+		}
+	}
+	return false
+}

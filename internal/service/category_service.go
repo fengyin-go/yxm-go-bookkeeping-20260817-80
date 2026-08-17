@@ -65,6 +65,9 @@ func (s *Service) UpdateCategory(id string, input model.Category) (*model.Catego
 
 // DeleteCategory 删除分类。
 func (s *Service) DeleteCategory(id string) error {
+	if s.store.HasTransactionsByCategory(id) {
+		return &model.CategoryInUseError{CategoryID: id}
+	}
 	if err := s.store.DeleteCategory(id); err != nil {
 		return err
 	}
