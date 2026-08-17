@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"strings"
 	"time"
 )
@@ -22,6 +23,24 @@ type Account struct {
 	Currency  string    `json:"currency"` // 币种，默认 CNY
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// AccountInUseError 表示账户已经被流水使用，不能删除。
+type AccountInUseError struct {
+	AccountID string
+}
+
+func (e *AccountInUseError) Error() string {
+	if e.AccountID != "" {
+		return "账户已被流水使用: " + e.AccountID
+	}
+	return "账户已被流水使用"
+}
+
+// IsAccountInUse 判断错误是否为账户占用错误。
+func IsAccountInUse(err error) bool {
+	var target *AccountInUseError
+	return errors.As(err, &target)
 }
 
 // Validate 规范化并校验账户字段。
