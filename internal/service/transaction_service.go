@@ -1,10 +1,12 @@
 package service
 
 import (
+	"errors"
 	"sort"
 	"time"
 
 	"bookkeeping/internal/model"
+	"bookkeeping/internal/store"
 	"bookkeeping/pkg/idgen"
 )
 
@@ -13,8 +15,7 @@ func (s *Service) CreateTransaction(input model.Transaction) (*model.Transaction
 	if err := input.Validate(); err != nil {
 		return nil, err
 	}
-	account, err := s.store.GetAccount(input.AccountID)
-	if err != nil {
+	if _, err := s.store.GetAccount(input.AccountID); err != nil {
 		return nil, err
 	}
 	category, err := s.store.GetCategory(input.CategoryID)
@@ -25,9 +26,17 @@ func (s *Service) CreateTransaction(input model.Transaction) (*model.Transaction
 	if category.Type != input.Type {
 		return nil, model.NewValidationError("category_id", "分类类型与收支类型不一致")
 	}
-	// 支出时校验余额充足。
-	if input.Type == model.TypeExpense && account.Balance < input.Amount {
-		return nil, model.NewValidationError("amount", "账户余额不足")
+
+	// 原子地校验并调整余额，避免并发记账下的丢失更新与数据竞争。
+	delta := input.Amount
+	if input.Type == model.TypeExpense {
+		delta = -input.Amount
+	}
+	if _, err := s.store.AdjustAccountBalance(input.AccountID, delta); err != nil {
+		if errors.Is(err, store.ErrInsufficientBalance) {
+			return nil, model.NewValidationError("amount", "账户余额不足")
+		}
+		return nil, err
 	}
 
 	t := &model.Transaction{
@@ -41,17 +50,8 @@ func (s *Service) CreateTransaction(input model.Transaction) (*model.Transaction
 		CreatedAt:  time.Now(),
 	}
 	if err := s.store.CreateTransaction(t); err != nil {
-		return nil, err
-	}
-
-	// 更新余额。
-	if input.Type == model.TypeIncome {
-		account.Balance += input.Amount
-	} else {
-		account.Balance -= input.Amount
-	}
-	account.UpdatedAt = time.Now()
-	if err := s.store.UpdateAccount(account); err != nil {
+		// 余额已调整，记流水失败需回滚。
+		_, _ = s.store.AdjustAccountBalance(input.AccountID, -delta)
 		return nil, err
 	}
 
@@ -97,15 +97,13 @@ func (s *Service) DeleteTransaction(id string) error {
 	if err := s.store.DeleteTransaction(id); err != nil {
 		return err
 	}
-	// 回滚余额。
-	if account, err := s.store.GetAccount(t.AccountID); err == nil {
-		if t.Type == model.TypeIncome {
-			account.Balance -= t.Amount
-		} else {
-			account.Balance += t.Amount
-		}
-		account.UpdatedAt = time.Now()
-		_ = s.store.UpdateAccount(account)
+	// 原子地回滚余额：收入减回，支出加回。账户已删除时忽略错误。
+	delta := -t.Amount
+	if t.Type == model.TypeExpense {
+		delta = t.Amount
+	}
+	if _, err := s.store.AdjustAccountBalance(t.AccountID, delta); err != nil {
+		s.log.Infof("回滚余额失败 %s: %v", id, err)
 	}
 	s.log.Infof("删除流水 %s", id)
 	return nil

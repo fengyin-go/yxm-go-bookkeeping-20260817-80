@@ -1,6 +1,10 @@
 package store
 
-import "bookkeeping/internal/model"
+import (
+	"time"
+
+	"bookkeeping/internal/model"
+)
 
 // CreateAccount 新增账户，名称重复时返回 ErrConflict。
 func (s *MemoryStore) CreateAccount(a *model.Account) error {
@@ -58,6 +62,25 @@ func (s *MemoryStore) UpdateAccount(a *model.Account) error {
 	}
 	s.accounts[a.ID] = a
 	return nil
+}
+
+// AdjustAccountBalance 在写锁保护下原子地校验并调整账户余额。
+// delta>0 表示收入，delta<0 表示支出；支出导致余额为负时返回 ErrInsufficientBalance。
+// 返回调整后的账户副本，避免调用方持有内部指针引发数据竞争。
+func (s *MemoryStore) AdjustAccountBalance(id string, delta int64) (*model.Account, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	a, ok := s.accounts[id]
+	if !ok {
+		return nil, ErrNotFound
+	}
+	if delta < 0 && a.Balance < -delta {
+		return nil, ErrInsufficientBalance
+	}
+	a.Balance += delta
+	a.UpdatedAt = time.Now()
+	cp := *a
+	return &cp, nil
 }
 
 // DeleteAccount 按 ID 删除账户。

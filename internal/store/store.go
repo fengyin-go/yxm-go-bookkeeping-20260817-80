@@ -8,8 +8,9 @@ import (
 )
 
 var (
-	ErrNotFound = errors.New("记录不存在")
-	ErrConflict = errors.New("记录已存在或状态冲突")
+	ErrNotFound            = errors.New("记录不存在")
+	ErrConflict            = errors.New("记录已存在或状态冲突")
+	ErrInsufficientBalance = errors.New("账户余额不足")
 )
 
 // Store 聚合全部实体的数据访问方法。
@@ -20,6 +21,7 @@ type Store interface {
 	GetAccountByName(name string) (*model.Account, error)
 	ListAccounts() []*model.Account
 	UpdateAccount(a *model.Account) error
+	AdjustAccountBalance(id string, delta int64) (*model.Account, error)
 	DeleteAccount(id string) error
 
 	// 分类
