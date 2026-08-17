@@ -52,6 +52,9 @@ func (s *Service) UpdateCategory(id string, input model.Category) (*model.Catego
 	if err != nil {
 		return nil, err
 	}
+	if exist.Type != input.Type && s.store.HasTransactionsByCategory(id) {
+		return nil, &model.CategoryInUseError{CategoryID: id}
+	}
 	exist.Name = input.Name
 	exist.Type = input.Type
 	if err := exist.Validate(); err != nil {
