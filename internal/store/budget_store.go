@@ -53,3 +53,15 @@ func (s *MemoryStore) DeleteBudget(id string) error {
 	delete(s.budgets, id)
 	return nil
 }
+
+// HasBudget 判断同一分类（或全局）是否已经存在预算。
+func (s *MemoryStore) HasBudget(categoryID string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, b := range s.budgets {
+		if b.CategoryID == categoryID {
+			return true
+		}
+	}
+	return false
+}

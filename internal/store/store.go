@@ -41,4 +41,5 @@ type Store interface {
 	ListBudgets() []*model.Budget
 	UpdateBudget(b *model.Budget) error
 	DeleteBudget(id string) error
+	HasBudget(categoryID string) bool
 }

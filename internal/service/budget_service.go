@@ -12,6 +12,9 @@ func (s *Service) CreateBudget(input model.Budget) (*model.Budget, error) {
 	if err := input.Validate(); err != nil {
 		return nil, err
 	}
+	if s.store.HasBudget(input.CategoryID) {
+		return nil, &model.BudgetDuplicateError{CategoryID: input.CategoryID}
+	}
 	if input.CategoryID != "" {
 		if _, err := s.store.GetCategory(input.CategoryID); err != nil {
 			return nil, err

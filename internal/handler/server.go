@@ -70,6 +70,8 @@ func writeServiceError(w http.ResponseWriter, err error) {
 	switch {
 	case model.IsValidationError(err):
 		httpx.BadRequest(w, err.Error())
+	case model.IsBudgetDuplicate(err):
+		httpx.Conflict(w, err.Error())
 	case errors.Is(err, store.ErrNotFound):
 		httpx.NotFound(w, err.Error())
 	case errors.Is(err, store.ErrConflict):
