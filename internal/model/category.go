@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"strings"
 	"time"
 )
@@ -17,6 +18,24 @@ type Category struct {
 	Name      string    `json:"name"`
 	Type      string    `json:"type"` // income / expense
 	CreatedAt time.Time `json:"created_at"`
+}
+
+// CategoryInUseError 表示分类已经被流水使用，不能变更关键属性。
+type CategoryInUseError struct {
+	CategoryID string
+}
+
+func (e *CategoryInUseError) Error() string {
+	if e.CategoryID != "" {
+		return "分类已被流水使用: " + e.CategoryID
+	}
+	return "分类已被流水使用"
+}
+
+// IsCategoryInUse 判断错误是否为分类占用错误。
+func IsCategoryInUse(err error) bool {
+	var target *CategoryInUseError
+	return errors.As(err, &target)
 }
 
 // Validate 规范化并校验分类字段。

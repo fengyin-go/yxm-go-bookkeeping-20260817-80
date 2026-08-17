@@ -1,4 +1,4 @@
-# yxm-go-bookkeeping-20260817-80
+# bookkeeping__002
 
 ## 标准命令
 
