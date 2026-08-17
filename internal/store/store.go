@@ -34,6 +34,8 @@ type Store interface {
 	GetTransaction(id string) (*model.Transaction, error)
 	ListTransactions() []*model.Transaction
 	DeleteTransaction(id string) error
+	ApplyTransaction(t *model.Transaction, accountID string, balanceDelta int64) error
+	RemoveTransaction(id string) (*model.Transaction, error)
 
 	// 预算
 	CreateBudget(b *model.Budget) error

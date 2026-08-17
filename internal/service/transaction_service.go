@@ -40,18 +40,11 @@ func (s *Service) CreateTransaction(input model.Transaction) (*model.Transaction
 		OccurredAt: input.OccurredAt,
 		CreatedAt:  time.Now(),
 	}
-	if err := s.store.CreateTransaction(t); err != nil {
-		return nil, err
+	delta := input.Amount
+	if input.Type == model.TypeExpense {
+		delta = -input.Amount
 	}
-
-	// 更新余额。
-	if input.Type == model.TypeIncome {
-		account.Balance += input.Amount
-	} else {
-		account.Balance -= input.Amount
-	}
-	account.UpdatedAt = time.Now()
-	if err := s.store.UpdateAccount(account); err != nil {
+	if err := s.store.ApplyTransaction(t, account.ID, delta); err != nil {
 		return nil, err
 	}
 
@@ -90,23 +83,11 @@ func (s *Service) ListTransactions(filter model.TransactionFilter, page, size in
 
 // DeleteTransaction 删除流水并回滚账户余额。
 func (s *Service) DeleteTransaction(id string) error {
-	t, err := s.store.GetTransaction(id)
+	t, err := s.store.RemoveTransaction(id)
 	if err != nil {
 		return err
 	}
-	if err := s.store.DeleteTransaction(id); err != nil {
-		return err
-	}
-	// 回滚余额。
-	if account, err := s.store.GetAccount(t.AccountID); err == nil {
-		if t.Type == model.TypeIncome {
-			account.Balance -= t.Amount
-		} else {
-			account.Balance += t.Amount
-		}
-		account.UpdatedAt = time.Now()
-		_ = s.store.UpdateAccount(account)
-	}
+	_ = t
 	s.log.Infof("删除流水 %s", id)
 	return nil
 }

@@ -1,6 +1,10 @@
 package store
 
-import "bookkeeping/internal/model"
+import (
+	"time"
+
+	"bookkeeping/internal/model"
+)
 
 // CreateTransaction 新增流水。
 func (s *MemoryStore) CreateTransaction(t *model.Transaction) error {
@@ -41,4 +45,46 @@ func (s *MemoryStore) DeleteTransaction(id string) error {
 	}
 	delete(s.transactions, id)
 	return nil
+}
+
+// ApplyTransaction 在同一把锁内完成流水写入和账户余额更新，避免并发丢更新。
+func (s *MemoryStore) ApplyTransaction(t *model.Transaction, accountID string, balanceDelta int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	account, ok := s.accounts[accountID]
+	if !ok {
+		return ErrNotFound
+	}
+	if _, ok := s.transactions[t.ID]; ok {
+		return ErrConflict
+	}
+
+	s.transactions[t.ID] = t
+	account.Balance += balanceDelta
+	account.UpdatedAt = time.Now()
+	return nil
+}
+
+// RemoveTransaction 在同一把锁内删除流水并回滚账户余额。
+func (s *MemoryStore) RemoveTransaction(id string) (*model.Transaction, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, ok := s.transactions[id]
+	if !ok {
+		return nil, ErrNotFound
+	}
+	account, ok := s.accounts[tx.AccountID]
+	if !ok {
+		return nil, ErrNotFound
+	}
+	if tx.Type == model.TypeIncome {
+		account.Balance -= tx.Amount
+	} else {
+		account.Balance += tx.Amount
+	}
+	account.UpdatedAt = time.Now()
+	delete(s.transactions, id)
+	return tx, nil
 }
