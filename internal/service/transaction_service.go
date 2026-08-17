@@ -40,11 +40,7 @@ func (s *Service) CreateTransaction(input model.Transaction) (*model.Transaction
 		OccurredAt: input.OccurredAt,
 		CreatedAt:  time.Now(),
 	}
-	delta := input.Amount
-	if input.Type == model.TypeExpense {
-		delta = -input.Amount
-	}
-	if err := s.store.ApplyTransaction(t, account.ID, delta); err != nil {
+	if err := s.store.ApplyTransaction(t, account.ID, t.BalanceDelta()); err != nil {
 		return nil, err
 	}
 

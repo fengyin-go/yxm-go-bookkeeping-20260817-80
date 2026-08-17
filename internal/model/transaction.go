@@ -40,6 +40,14 @@ func (t *Transaction) Validate() error {
 	return nil
 }
 
+// BalanceDelta 返回该流水对账户余额的增量（收入为正、支出为负）。
+func (t *Transaction) BalanceDelta() int64 {
+	if t.Type == TypeExpense {
+		return -t.Amount
+	}
+	return t.Amount
+}
+
 // TransactionFilter 流水筛选条件。
 type TransactionFilter struct {
 	AccountID  string
